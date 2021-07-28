@@ -1,0 +1,46 @@
+import configparser
+import psycopg2
+from sql_queries import copy_table_queries, insert_table_queries
+import configparser
+
+
+config = configparser.ConfigParser()
+config.read_file(open('dwh.cfg'))
+CLUSTER_IDENTIFIER = config.get("CLUSTER", "HOST")
+CLUSTER_ENDPOINT   = config.get("CLUSTER", "CLUSTER_ENDPOINT")
+DB_NAME            = config.get("CLUSTER", "DB_NAME")
+DB_USER            = config.get("CLUSTER","DB_USER")
+DB_PASSWORD        = config.get("CLUSTER", "DB_PASSWORD")
+DB_PORT            = config.get("CLUSTER", "DB_PORT")
+
+
+# function runs staging_events_copy, staging_songs_copy queries, which insert json files for corresponding staging table
+def load_staging_tables(cur, conn):
+    for query in copy_table_queries:
+        cur.execute(query)
+        conn.commit()
+
+#function uploads fact table and 4 dimension tables from staging tables. it creates autoincrimental identifier for songplays table 
+def insert_tables(cur, conn):
+    for query in insert_table_queries:
+        cur.execute(query)
+        conn.commit()
+
+
+def main():
+    config = configparser.ConfigParser()
+    config.read('dwh.cfg')
+
+    #doesn't work as port number is invalid
+    #conn = psycopg2.connect("dbname='DB_NAME' user='DB_USER' host='CLUSTER_ENDPOINT' password='DB_PASSWORD' port='DB_PORT'".format(*config['CLUSTER'].values()))
+    conn = psycopg2.connect("dbname='dev' user='aws_user_v2' host='redshift-cluster-1.xxx.us-west-2.redshift.amazonaws.com' password='xxxxxx' port=5439")
+    cur = conn.cursor()
+    
+    load_staging_tables(cur, conn)
+    insert_tables(cur, conn)
+
+    conn.close()
+
+
+if __name__ == "__main__":
+    main()
